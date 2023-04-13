@@ -78,7 +78,7 @@ const followUser = async (req, res) => {
 // Unfollow a user 
 const unfollowUser = async(req,res) =>{
     try {
-        const user = await UserModel.findById(req.user._id);
+        const user = await UserModel.findById(req.user.id);
         const unfollowUser = await UserModel.findById(req.params.id);
     
         if (!user || !unfollowUser) {
@@ -92,7 +92,7 @@ const unfollowUser = async(req,res) =>{
         user.following.pull(req.params.id);
         await user.save();
     
-        unfollowUser.followers.pull(req.user._id);
+        unfollowUser.followers.pull(req.user.id);
         await unfollowUser.save();
     
         res.status(200).json({ "Message": "User unfollowed successfully" });
@@ -101,10 +101,36 @@ const unfollowUser = async(req,res) =>{
         res.status(500).json({ "Message": "Server Error" });
       }
 }
+
+// Post 
+
+const postPosts = async(req,res) =>{
+    try {
+        // create new post object with data from request body
+        const newPost = new PostModel({
+          title: req.body.title,
+          description: req.body.description
+        });
+    
+        // save new post to database
+        const post = await newPost.save();
+        
+        // return post information
+        res.json({
+          title: post.title,
+          description: post.description,
+          created_at: post.created_at
+        });
+      } catch (err) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+      }
+}
 module.exports = {
     userAuthenticate,
     postUser,
     getUser,
     followUser,
-    unfollowUser
+    unfollowUser,
+    postPosts
 }

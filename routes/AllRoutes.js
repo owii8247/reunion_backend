@@ -8,6 +8,8 @@ router.post("/api/postuser", AllController.postUser)
 router.post("/api/follow/:id", AllController.followUser)
 router.post("/api/unfollow/:id", AllController.unfollowUser)
 router.get("/api/user", AllController.getUser)
+router.post("/api/posts", AllController.postPosts)
+
 
 
 
