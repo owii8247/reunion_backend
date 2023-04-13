@@ -69,68 +69,180 @@ const followUser = async (req, res) => {
         await followedUser.save();
 
         res.json({ "Message": "Successfully followed the user" });
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ "Message": "Internal server error" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ "Message": "Internal server error", err });
     }
 }
 
 // Unfollow a user 
-const unfollowUser = async(req,res) =>{
+const unfollowUser = async (req, res) => {
     try {
         const user = await UserModel.findById(req.user.id);
         const unfollowUser = await UserModel.findById(req.params.id);
-    
+
         if (!user || !unfollowUser) {
-          return res.status(404).json({ "Message": "User not found" });
+            return res.status(404).json({ "Message": "User not found" });
         }
-    
+
         if (user.following.indexOf(req.params.id) === -1) {
-          return res.status(400).json({ "Message": "You are not following this user" });
+            return res.status(400).json({ "Message": "You are not following this user" });
         }
-    
+
         user.following.pull(req.params.id);
         await user.save();
-    
+
         unfollowUser.followers.pull(req.user.id);
         await unfollowUser.save();
-    
+
         res.status(200).json({ "Message": "User unfollowed successfully" });
-      } catch (err) {
+    } catch (err) {
         console.error(err);
         res.status(500).json({ "Message": "Server Error" });
-      }
+    }
 }
 
 // Post 
 
-const postPosts = async(req,res) =>{
+const postPosts = async (req, res) => {
     try {
         // create new post object with data from request body
         const newPost = new PostModel({
-          title: req.body.title,
-          description: req.body.description
+            title: req.body.title,
+            description: req.body.description
         });
-    
+
         // save new post to database
         const post = await newPost.save();
-        
+
         // return post information
         res.json({
-          title: post.title,
-          description: post.description,
-          created_at: post.created_at
+            _id: post._id,
+            title: post.title,
+            description: post.description,
+            created_at: post.created_at
         });
-      } catch (err) {
-        console.error(err.message);
-        res.status(500).send('Server Error');
-      }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ "Message": "Internal Server Error", err });
+    }
 }
+
+// Delete Post
+const deletePosts = async (req, res) => {
+    try {
+        const posts = await PostModel.findByIdAndDelete(req.params.id);
+        if (!posts) {
+            return res.status(404).send({ "Message": "Post not found" });
+        }
+
+        res.send({ "Message": "Post Deleted Successfully", posts });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ "Message": "Internal Server Error", err });
+    }
+}
+
+// Post Like 
+const postLike = async (req, res) => {
+    try {
+        const posts = await PostModel.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { likes: 1 } },
+            { new: true }
+        );
+
+        if (!posts) {
+            return res.status(404).send();
+        }
+
+        res.send(posts);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ "Message": "Internal server error" });
+    }
+}
+
+// Post Unlike
+
+const postUnlike = async (req, res) => {
+    try {
+        const posts = await PostModel.findByIdAndUpdate(
+            req.params.id,
+            { $inc: { likes: -1 } },
+            { new: true }
+        );
+
+        if (!posts) {
+            return res.status(404).send();
+        }
+
+        res.send(posts);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ "Message": "Internal server error" });
+    }
+}
+
+// Comment on Post
+const postComment = async (req, res) => {
+    const post = await PostModel.findById(req.params.id);
+    if (!post) return res.status(404).send({ "Message": "Post not found" });
+
+    const comment = new Comment({
+        comment: req.body.comment,
+        author: req.user._id,
+        post: post._id
+    });
+
+    try {
+        const savedComment = await comment.save();
+        res.send({ comment: savedComment._id });
+    } catch (err) {
+        res.status(400).send(err);
+    }
+}
+
+
+// Get All Post
+const getAllPost = async (req, res) => {
+    try {
+        //const userId = req.user._id;
+
+        const posts = await PostModel.find()
+            .populate('comments')
+            .sort({ createdAt: 'desc' })
+            .exec();
+
+        const postList = posts.map((post) => {
+            return {
+                id: post._id,
+                title: post.title,
+                description: post.description,
+                created_at: post.created_at,
+                comments: post.comments,
+                likes: post.likes.length,
+            };
+        });
+
+        res.status(200).json(postList);
+    } catch (err) {
+        console.log(err);
+        res.status(500).json({ "Message": "Internal server error" });
+    }
+}
+
+
 module.exports = {
     userAuthenticate,
     postUser,
     getUser,
     followUser,
     unfollowUser,
-    postPosts
+    postPosts,
+    deletePosts,
+    postLike,
+    postUnlike,
+    postComment,
+    getAllPost,
 }
